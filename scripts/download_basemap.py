@@ -4,11 +4,14 @@ import zipfile
 import requests
 
 
+# 项目根目录（脚本在 scripts/ 子目录下）。
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
 # 下载的 Natural Earth 底图压缩包地址。
 BASEMAP_URL = "https://naciscdn.org/naturalearth/50m/raster/HYP_50M_SR_W.zip"
 
-# 工作目录。
-WORKDIR = Path(r"E:\Self\Work\hrs")
+# 工作目录（底图下载到项目根目录）。
+WORKDIR = PROJECT_ROOT
 
 # 下载后的压缩包路径。
 ZIP_PATH = WORKDIR / "HYP_50M_SR_W.zip"

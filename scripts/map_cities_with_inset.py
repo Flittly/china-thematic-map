@@ -23,13 +23,18 @@ matplotlib.rcParams["axes.unicode_minus"] = False
 # 配置区
 # ====================
 
+# 项目根目录（脚本在 scripts/ 子目录下）。
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
 # 工作目录与底图文件。
-WORKDIR = Path(r"E:\Self\Work\hrs")
+WORKDIR = PROJECT_ROOT
 BASEMAP_DIR = WORKDIR / "HYP_50M_SR_W"
 BASEMAP_TIF = BASEMAP_DIR / "HYP_50M_SR_W.tif"
 BASEMAP_TFW = BASEMAP_DIR / "HYP_50M_SR_W.tfw"
 
 # 数据路径。
+# 请将下面的路径改为你本地的中国行政区划 shapefile 所在位置。
+# 需要的文件：省级矢量、陆上边界线、地级市矢量、九段线。
 PROVINCE_PATH = Path(
     r"E:\Self\资源\中国省市县2022年初行政区划数据\中国省市县2022年初行政区划数据\2022省级\2022省矢量.shp"
 )

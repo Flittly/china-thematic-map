@@ -4,6 +4,9 @@ import zipfile
 import requests
 
 
+# 项目根目录（脚本在 scripts/ 子目录下）。
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
 # Natural Earth 10m 陆上国界线数据。
 # 这是国家与国家之间的陆地边界线，不是海岸线。
 LAND_BORDER_URL = (
@@ -11,8 +14,8 @@ LAND_BORDER_URL = (
     "ne_10m_admin_0_boundary_lines_land.zip"
 )
 
-# 工作目录。
-WORKDIR = Path(r"E:\Self\Work\hrs")
+# 工作目录（数据下载到项目根目录）。
+WORKDIR = PROJECT_ROOT
 
 # 下载后的压缩包路径。
 ZIP_PATH = WORKDIR / "ne_10m_admin_0_boundary_lines_land.zip"

@@ -1,4 +1,20 @@
-*
-!*/
-!*.py
-!.gitignore
+# Data directories
+HYP_50M_SR_W/
+ne_10m_admin_0_boundary_lines_land/
+
+# Archives
+*.zip
+
+# Output images
+*.png
+
+# Layer files
+*.lyr
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Ruff cache
+.ruff_cache/
