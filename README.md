@@ -1,214 +1,173 @@
-# China Thematic Map Skill / 中国专题地图制图 Skill
+# China Thematic Map Skill
 
-[English](#english) | [中文](#中文)
+Generate publication-quality thematic maps of China using Python, local shapefiles, and raster basemaps.
 
----
+All map layers — vector boundaries, city polygons, nine-dash line — are rendered in a unified pixel space after projection, so basemap and overlays always align perfectly.
 
-## English
+## What It Produces
 
-### Overview
+![Example output](china_cities_polygons_map_with_inset.png)
 
-This is an **AI Skill** (compatible with Claude Code, Cursor, Codex, and other AI coding assistants) that provides a complete workflow for creating publication-quality thematic maps of China using Python. It includes:
+A complete map includes:
+- Natural Earth basemap (cropped & reprojected to target CRS)
+- Province boundaries, land borders with dual-band purple styling
+- Highlighted city polygons with color-coded labels
+- Graticule with degree annotations on all four edges
+- North arrow, scale bar, and legend
+- South China Sea inset with nine-dash line (single-sided buffer styling)
 
-- A ready-to-run example script generating a city-highlighted China map with South China Sea inset and nine-dash line
-- Download scripts for Natural Earth basemap and land boundary data
-- Comprehensive instructions for the AI assistant on how to handle China map creation, debugging, and refinement
-
-### Project Structure
+## How It Works
 
 ```
-china-thematic-map/
-├── SKILL.md              # Skill instructions read by AI assistants
-├── README.md             # This file
-├── .gitignore            # Ignores data dirs, output images, archives
-├── scripts/
-│   ├── download_basemap.py          # Download Natural Earth 50m basemap
-│   ├── download_land_border.py      # Download 10m land boundary shapefile
-│   └── map_cities_with_inset.py     # Main mapping script (example)
-├── HYP_50M_SR_W/                    # (downloaded) Basemap raster files
-├── ne_10m_admin_0_boundary_lines_land/  # (downloaded) Boundary data
-└── china_cities_polygons_map_with_inset.png  # Example output map
+Shapefiles (WGS84)
+     │                        Basemap TIFF + World File (WGS84)
+     ▼                        ▼
+  Project to target CRS     Crop to extent → Reproject to target CRS
+     │                        │
+     ▼                        ▼
+  Convert to pixel coords    Ready as NumPy array
+     │                        │
+     └────────┬───────────────┘
+              ▼
+     Draw layers in order on shared pixel canvas
+              │
+              ▼
+         Output PNG
 ```
 
-### Prerequisites
+**Key insight:** The basemap and all vector layers are projected to the *same target CRS* (default: UTM 49N, EPSG:32649), then converted to pixel coordinates on a single image canvas. This eliminates the common "misaligned layers" problem entirely.
 
-- Python 3.9+
-- Required packages:
-  - `geopandas`
-  - `matplotlib`
-  - `numpy`
-  - `Pillow`
-  - `pyproj`
-  - `shapely`
-  - `requests`
+**Why pixel space instead of GIS coordinates?**
+Conventional GIS mapping tools render layers in geographic or projected space, which leads to subtle misalignments when combining raster and vector sources. By reprojecting everything into a single pixel grid, every layer shares the exact same coordinate system — no offsets, no resampling gaps.
 
-Install with:
+## Before Using — Data Checklist
+
+The skill needs four things to work. Without these, generating a correct map is impossible:
+
+| # | Requirement | Get it |
+|---|-------------|--------|
+| 1 | Raster basemap (TIFF + TFW) | Run `scripts/download_basemap.py` |
+| 2 | Land border shapefile | Run `scripts/download_land_border.py` |
+| 3 | China admin shapefiles (province, city, nine-dash) | [DataV.GeoAtlas](http://datav.aliyun.com/portal/school/atlas/area_selector) or [WebMap](https://www.webmap.cn/) |
+| 4 | GDAL/geopandas environment | `pip install geopandas matplotlib numpy Pillow pyproj shapely requests` |
+
+## Quick Start
 
 ```bash
+# 1. Install dependencies
 pip install geopandas matplotlib numpy Pillow pyproj shapely requests
+
+# 2. Download basemap and land boundary (outputs to project root)
+python scripts/download_basemap.py
+python scripts/download_land_border.py
+
+# 3. Edit scripts/map_cities_with_inset.py — set your shapefile paths
+#    PROVINCE_PATH, CITY_PATH, COUNTRY_BORDER_PATH, NINE_DASH_PATH
+
+# 4. Generate the map
+python scripts/map_cities_with_inset.py
 ```
 
-### Quick Start
+## Configuration Reference
 
-1. **Download basemap and boundary data:**
+All tunable parameters live at the top of `scripts/map_cities_with_inset.py`. Modify them directly — no config files needed.
 
-   ```bash
-   python scripts/download_basemap.py
-   python scripts/download_land_border.py
-   ```
+### Core Parameters
 
-2. **Prepare China administrative shapefiles:**
+| Section | Parameter | What it controls |
+|---------|-----------|------------------|
+| **Paths** | `WORKDIR` | Project root (auto-detected from script location) |
+| | `BASEMAP_TIF / TFW` | Local basemap files |
+| | `PROVINCE_PATH` etc. | Shapefile locations |
+| **Extents** | `MAIN_EXTENT_GEO` | Main map lat/lon bounds `(min_lon, min_lat, max_lon, max_lat)` |
+| | `INSET_EXTENT_GEO` | South China Sea inset bounds |
+| **CRS** | `SOURCE_CRS` | Input data CRS (default: WGS84) |
+| | `TARGET_CRS` | Output projection (default: UTM 49N) |
+| **Padding** | `MAIN_BASEMAP_PAD_*` | Extra basemap extent beyond vector bounds (degrees) |
+| | `INSET_BASEMAP_PAD_DEG` | Same, for the inset |
+| **Cities** | `CITY_CODE_TO_LABEL` | City admin codes and display names |
+| | `CITY_COLORS` | Fill color per city |
+| **Borders** | `BORDER_OUTER_COLOR / INNER_COLOR` | Purple band colors |
+| | `BORDER_OUTER_ALPHA / INNER_ALPHA` | Band transparency (0.3–0.8) |
+| | `MAIN_BORDER_INNER_BUFFER / OUTER_BUFFER` | Band widths in pixels |
+| **Nine-dash** | `NINE_DASH_INNER_BUFFER / OUTER_BUFFER` | Single-sided buffer widths |
+| | `NINE_DASH_SIDE_SIGN` | Which side to buffer (1 or -1) |
+| | `NINE_DASH_END_EXTEND` | How much to extend line ends to match black core |
+| **Layout** | `INSET_AXES_RECT` | Inset position `[left, bottom, width, height]` |
+| | `SCALE_BAR_LENGTH_KM` | Scale bar total length |
+| | `LON_TICKS / LAT_TICKS` | Graticule intervals |
 
-   You need to obtain the following shapefiles (not included):
-   - Province-level boundaries (省级矢量)
-   - City-level boundaries (地级市矢量)
-   - Land border lines (陆上边界线)
-   - Nine-dash line (九段线)
+## How the AI Assistant Uses This Skill
 
-   Popular source: [DataV.GeoAtlas](http://datav.aliyun.com/portal/school/atlas/area_selector) or [National Geomatics Center of China](https://www.webmap.cn/)
+When you ask an AI coding assistant to make a China map, it reads `SKILL.md` and follows a specific workflow:
 
-3. **Configure data paths:**
+### 1. Input Validation (always first)
+Before writing any code, the assistant checks:
+- Do shapefile paths exist?
+- Is the basemap available?
+- Are map extents specified?
+- Is the target CRS known?
 
-   Edit `scripts/map_cities_with_inset.py` and update the path configuration at the top of the file:
-   - `PROVINCE_PATH` — path to province shapefile
-   - `CITY_PATH` — path to city shapefile
-   - `COUNTRY_BORDER_PATH` — path to land border shapefile
-   - `NINE_DASH_PATH` — path to nine-dash line shapefile
+If information is missing, it asks you before proceeding — no blind code generation.
 
-4. **Generate the map:**
+### 2. Maintenance Mode (existing scripts)
+If you already have a working script and just want a tweak, the assistant:
+- Modifies only the relevant parameter or function
+- Preserves your file name, output name, and script structure
+- Never rewrites the whole map for a one-line change
 
-   ```bash
-   python scripts/map_cities_with_inset.py
-   ```
-
-   The output PNG will be saved as `china_cities_polygons_map_with_inset.png` in the project root.
-
-### Example Output
-
-![Example China Thematic Map](china_cities_polygons_map_with_inset.png)
-
-### How AI Uses This Skill
-
-When installed as a skill, AI assistants will automatically use `SKILL.md` to:
-
-- Understand the proper workflow for China map creation
-- Follow best practices for basemap handling, CRS alignment, and layer ordering
-- Debug common issues (misaligned layers, missing basemap, white map)
-- Modify existing scripts with minimal changes instead of rewriting
-- Add South China Sea insets and nine-dash lines correctly
-
-### License
-
-MIT
-
----
-
-## 中文
-
-### 概述
-
-这是一个 **AI Skill**（兼容 Claude Code、Cursor、Codex 等 AI 编程助手），提供了一套用 Python 绘制出版级中国专题地图的完整工作流。包含：
-
-- 可直接运行的示例脚本：高亮城市 + 南海插图 + 九段线
-- Natural Earth 底图和陆上国界线的下载脚本
-- 面向 AI 助手的完整制图指导（数据准备、投影处理、样式调整、故障排查）
-
-### 项目结构
-
+### 3. Layer Rendering Order
 ```
-china-thematic-map/
-├── SKILL.md              # AI 助手读取的 Skill 指令
-├── README.md             # 本文件
-├── .gitignore            # 忽略数据目录、输出图、压缩包
-├── scripts/
-│   ├── download_basemap.py          # 下载 Natural Earth 50m 全球底图
-│   ├── download_land_border.py      # 下载 10m 陆上国界线数据
-│   └── map_cities_with_inset.py     # 主绘图脚本（示例）
-├── HYP_50M_SR_W/                    # （需下载）底图栅格文件
-├── ne_10m_admin_0_boundary_lines_land/  # （需下载）国界线数据
-└── china_cities_polygons_map_with_inset.png  # 输出示例地图
+Basemap → Graticule → Province boundaries → Border bands → Border core line
+→ Nine-dash bands → Nine-dash line → City polygons → City labels
+→ Legend → North arrow → Scale bar → South China Sea inset
 ```
 
-### 环境要求
+### 4. Troubleshooting Priority
+When something is wrong, fixes are applied in this exact order:
+1. File path errors
+2. CRS / projection misalignment
+3. Missing basemap
+4. Missing inset / nine-dash line
+5. Styling / cosmetic issues
 
-- Python 3.9+
-- 依赖包：
-  - `geopandas`
-  - `matplotlib`
-  - `numpy`
-  - `Pillow`
-  - `pyproj`
-  - `shapely`
-  - `requests`
+## Basemap Troubleshooting
 
-安装命令：
+If the map appears blank, white, or misaligned:
 
-```bash
-pip install geopandas matplotlib numpy Pillow pyproj shapely requests
-```
+| Symptom | Likely cause | Fix |
+|---------|-------------|-----|
+| Entire map white | TIFF path wrong or file missing | Verify `BASEMAP_TIF` exists |
+| Map is solid white | Data read as empty array | Check TIFF is valid, not corrupt |
+| Basemap offset from vectors | CRS mismatch | Ensure basemap is reprojected, not just cropped |
+| Basemap shows wrong area | Crop bounds incorrect | Check `MAIN_EXTENT_GEO` and padding values |
+| Some regions pixelated | Resolution too low | Reduce padding to use more of the source TIFF |
 
-### 快速开始
+## Architecture Decisions
 
-1. **下载底图和国界线数据：**
+**No GIS rendering libraries.** The map uses pure matplotlib + numpy. Vector geometries are projected with pyproj/shapely, converted to pixel coordinates, and drawn as matplotlib patches. This gives full control over every pixel without fighting a GIS engine's rendering pipeline.
 
-   ```bash
-   python scripts/download_basemap.py
-   python scripts/download_land_border.py
-   ```
+**No online dependencies at runtime.** Once basemap and shapefiles are downloaded, the script runs entirely offline. No tile servers, no API keys.
 
-2. **准备中国行政区划 shapefile：**
+**Single script, no framework.** Everything is in one file. Config at the top, functions below, `main()` at the bottom. No class hierarchies, no plugin systems. This makes it trivial for users to modify.
 
-   你需要自行获取以下数据（本项目不包含）：
-   - 省级行政区矢量
-   - 地级市矢量
-   - 陆上边界线
-   - 九段线
+## Anti-Patterns (Avoid)
 
-   常用来源：[DataV.GeoAtlas](http://datav.aliyun.com/portal/school/atlas/area_selector) 或 [全国地理信息资源目录服务系统](https://www.webmap.cn/)
+- Don't style borders before verifying CRS alignment
+- Don't use double-sided buffers for nine-dash line (it wraps around, not outward)
+- Don't hardcode layout numbers deep inside functions — put them in the config block
+- Don't delete the South China Sea inset to "save space"
+- Don't regenerate the whole script when only one parameter changed
+- Don't write a new output filename when the user has an existing one
 
-3. **配置数据路径：**
+## Technology Stack
 
-   编辑 `scripts/map_cities_with_inset.py`，修改顶部的路径配置：
-   - `PROVINCE_PATH` — 省级矢量 shp 路径
-   - `CITY_PATH` — 地级市矢量 shp 路径
-   - `COUNTRY_BORDER_PATH` — 陆上边界线 shp 路径
-   - `NINE_DASH_PATH` — 九段线 shp 路径
-
-4. **生成地图：**
-
-   ```bash
-   python scripts/map_cities_with_inset.py
-   ```
-
-   输出 PNG 将保存为项目根目录下的 `china_cities_polygons_map_with_inset.png`。
-
-### 示例输出
-
-![示例中国专题地图](china_cities_polygons_map_with_inset.png)
-
-### AI 如何使用此 Skill
-
-作为 Skill 安装后，AI 助手会自动读取 `SKILL.md` 来：
-
-- 理解中国地图制图的正确工作流
-- 遵循底图处理、坐标系对齐、图层顺序的最佳实践
-- 排查常见问题（图层错位、底图缺失、地图空白）
-- 在已有脚本上做最小修改，避免不必要的重写
-- 正确处理南海插图和九段线
-
-### 自定义地图
-
-`map_cities_with_inset.py` 顶部的配置区集中了所有可调参数：
-
-- **路径参数**：底图路径、矢量数据路径、输出路径
-- **范围参数**：主图经纬度范围、南海插图范围
-- **投影参数**：源坐标系、目标坐标系
-- **底图扩边参数**：主图和插图的额外裁切边距
-- **城市专题参数**：需高亮的城市代码、标签、配色
-- **国界线色带参数**：内外层缓冲宽度、颜色、透明度
-- **九段线参数**：单侧缓冲宽度、端点延长、方向
-- **比例尺和插图参数**：比例尺长度、位置；插图锚点、大小
-
-### 许可
-
-MIT
+| Component | Library |
+|-----------|---------|
+| Vector I/O | `geopandas`, `fiona` |
+| Coordinate transforms | `pyproj` |
+| Geometry operations | `shapely` |
+| Raster handling | `PIL` (Pillow), `numpy` |
+| Rendering | `matplotlib` |
+| Data download | `requests` |
+| Target CRS | EPSG:32649 (UTM Zone 49N, suitable for China) |
