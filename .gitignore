@@ -5,8 +5,9 @@ ne_10m_admin_0_boundary_lines_land/
 # Archives
 *.zip
 
-# Output images
+# Output images (except the example one used in README)
 *.png
+!china_cities_polygons_map_with_inset.png
 
 # Layer files
 *.lyr
